@@ -1,7 +1,7 @@
 import numpy as np
 import optuna
 from sklearn.model_selection import cross_val_score
-
+import gc
 
 def optimize_model(model_class, param_space, X, y, cv, n_trials=50):
     def objective(trial: optuna.Trial):
@@ -17,6 +17,8 @@ def optimize_model(model_class, param_space, X, y, cv, n_trials=50):
             scoring="neg_root_mean_squared_error",
             n_jobs=-1,
         )
+
+        gc.collect()
 
         trial.set_user_attr("scores", scores.tolist())
 

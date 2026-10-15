@@ -20,6 +20,9 @@ def core_factory(device: str):
     try:
         if device == "cuda":
             import cuml as core
+            import cuml.accel
+
+            cuml.accel.install()
         else:
             raise RuntimeError("Backend mismatch")
     except:
