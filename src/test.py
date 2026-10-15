@@ -1,14 +1,14 @@
 import numpy as np
 import pandas as pd
 from sklearn.base import clone
-from sklearn.model_selection import KFold
+from sklearn.model_selection import BaseCrossValidator
 
 
 def test_models(
     model_specs: dict[str, tuple[object, pd.DataFrame, pd.DataFrame]],
     y_train: pd.DataFrame,
     y_test: pd.DataFrame,
-    kf: KFold,
+    kf: BaseCrossValidator,
 ):
     test_predictions = pd.DataFrame(index=y_test.index)
     test_predictions["y_true"] = y_test
@@ -47,6 +47,84 @@ def test_models(
         )
 
     test_errors = pd.DataFrame(error_rows)
+    test_results = (
+        pd.DataFrame(test_rows).sort_values("Test RMSE").reset_index(drop=True)
+    )
+
+    return test_predictions, test_errors, test_results
+
+
+def test_models_manual(
+    model_specs: dict,
+    y_train: pd.DataFrame,
+    y_test: pd.DataFrame,
+    kf: BaseCrossValidator,
+):
+    test_predictions = pd.DataFrame(index=y_test.index)
+    test_predictions["y_true"] = y_test.squeeze()
+
+    error_rows = []
+    test_rows = []
+
+    for model_name, spec in model_specs.items():
+        model, X_fit, X_holdout, fit_fn, predict_fn = spec
+
+        fold_test_predictions = []
+
+        for fold, (fit_idx, _) in enumerate(kf.split(X_fit), start=1):
+            fold_model = clone(model)
+
+            X_fold = X_fit.iloc[fit_idx]
+            y_fold = y_train.iloc[fit_idx]
+
+            fitted_model = fit_fn(
+                fold_model,
+                X_fold,
+                y_fold,
+                X_holdout,
+                y_test,
+            )
+
+            if fitted_model is not None:
+                fold_model = fitted_model
+
+            predictions = predict_fn(
+                fold_model,
+                X_holdout,
+            )
+
+            fold_test_predictions.append(np.asarray(predictions).reshape(-1))
+
+        test_pred = np.mean(
+            np.vstack(fold_test_predictions),
+            axis=0,
+        )
+
+        test_predictions[model_name] = test_pred
+
+        residual = y_test.to_numpy().reshape(-1) - test_pred
+        abs_error = np.abs(residual)
+
+        test_rows.append(
+            {
+                "Model": model_name,
+                "Test RMSE": np.sqrt(np.mean(residual**2)),
+                "Test MAE": np.mean(abs_error),
+            }
+        )
+
+        error_rows.extend(
+            {
+                "Model": model_name,
+                "Test row": row_idx,
+                "Absolute error": err,
+                "Residual (true - pred)": res,
+            }
+            for row_idx, err, res in zip(y_test.index, abs_error, residual)
+        )
+
+    test_errors = pd.DataFrame(error_rows)
+
     test_results = (
         pd.DataFrame(test_rows).sort_values("Test RMSE").reset_index(drop=True)
     )
