@@ -59,6 +59,7 @@ def test_models_manual(
     y_train: pd.DataFrame,
     y_test: pd.DataFrame,
     kf: BaseCrossValidator,
+    should_clone: bool = True,
 ):
     test_predictions = pd.DataFrame(index=y_test.index)
     test_predictions["y_true"] = y_test.squeeze()
@@ -72,7 +73,7 @@ def test_models_manual(
         fold_test_predictions = []
 
         for fold, (fit_idx, _) in enumerate(kf.split(X_fit), start=1):
-            fold_model = clone(model)
+            fold_model = clone(model) if should_clone else model
 
             X_fold = X_fit.iloc[fit_idx]
             y_fold = y_train.iloc[fit_idx]
