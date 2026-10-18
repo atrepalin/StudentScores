@@ -1,9 +1,11 @@
+from functools import lru_cache
 from typing import Literal
 
 import lightgbm
 import numpy as np
 
 
+@lru_cache
 def get_lgbm_device(device: Literal["cuda", "cpu"]):
     if device == "cuda":
         try:

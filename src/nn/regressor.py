@@ -37,6 +37,7 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
         seed=42,
         device="cpu",
         numeric_cols=None,
+        verbose=True,
         **kwargs,
     ):
         self.kwargs = kwargs
@@ -51,6 +52,7 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
         self.num_workers = num_workers
         self.seed = seed
         self.numeric_cols = numeric_cols
+        self.verbose = verbose
         self.device = torch.device(device)
 
     @staticmethod
@@ -173,7 +175,7 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
             callbacks=[early_stopping, checkpoint],
             logger=False,
             enable_checkpointing=True,
-            enable_progress_bar=True,
+            enable_progress_bar=self.verbose,
             enable_model_summary=False,
             deterministic=True,
             num_sanity_val_steps=0,
