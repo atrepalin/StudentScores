@@ -1,0 +1,81 @@
+[project]
+name = "ml-research"
+version = "0.1.0"
+description = "Machine learning research environment"
+requires-python = ">=3.12"
+
+dependencies = [
+    # ============================================================
+    # Jupyter - notebooks, kernels, interactive widgets
+    # ============================================================
+    "jupyter==1.1.1",
+    "notebook==7.6.3",
+    "ipykernel==7.4.0",
+    "ipython==9.17.1",
+    "ipywidgets==8.1.9",
+
+    # ============================================================
+    # Core scientific computing
+    # ============================================================
+    "numpy==2.5.4",
+    "scipy==1.18.1",
+    "pandas==3.0.6",
+    "pyarrow==26.0.0",
+
+    # ============================================================
+    # Data visualization
+    # ============================================================
+    "matplotlib==3.11.2",
+    "seaborn==0.13.2",
+    "plotly==7.1.0",
+
+    # ============================================================
+    # Classical machine learning and feature selection
+    # ============================================================
+    "scikit-learn==1.9.1",
+    "statsmodels==0.15.0",
+    "phik==0.12.5",
+    "Boruta==0.4.3",
+
+    # ============================================================
+    # Gradient boosting and tree-based models
+    # ============================================================
+    "catboost==1.2.10",
+    "xgboost==3.4.1",
+
+    # ============================================================
+    # Hyperparameter optimization and research utilities
+    # ============================================================
+    "optuna==5.0.0",
+    "hillclimbers==0.1.4",
+    "tqdm==4.70.1",
+
+    # ============================================================
+    # Deep learning ecosystem
+    # ============================================================
+    "lightning==2.6.6",
+    "tabm==0.0.3",
+
+    # ============================================================
+    # GPU monitoring
+    # ============================================================
+    "nvidia-ml-py==13.615.71",
+
+    # Windows-only Triton build
+    "triton-windows==3.8.0.post29; sys_platform == 'win32'",
+]
+
+[tool.uv]
+# This is an environment, not an installable Python package.
+package = false
+
+# GPU-related dependencies are installed separately to select
+# the appropriate CUDA / platform build manually.
+exclude-dependencies = [
+    "torch",
+    "cupy",
+    "cupy-cuda12x",
+    "lightgbm",
+    "cuml",
+    "cuml-cu12",
+]
