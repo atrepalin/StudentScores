@@ -8,6 +8,8 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import BaseCrossValidator, cross_val_score
 from sklearn.utils import _safe_indexing
 
+optuna.logging.set_verbosity(optuna.logging.WARNING)
+
 
 def optimize_model(
     model_class,
