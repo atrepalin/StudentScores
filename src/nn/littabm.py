@@ -5,19 +5,34 @@ from src.nn.litmodel import LitModel
 
 
 class LitTabM(LitModel):
+    """TabM model for regression"""
+
     def __init__(
         self,
         input_dim: int,
-        lr: float = 1e-3,
-        weight_decay: float = 1e-4,
-        min_lr: float = 1e-6,
-        scheduler_patience: int = 5,
         k: int = 32,
         n_blocks: int = 3,
         d_block: int = 512,
         dropout: float = 0.1,
         arch_type: str = "tabm",
+        lr: float = 1e-3,
+        weight_decay: float = 1e-4,
+        min_lr: float = 1e-6,
+        scheduler_patience: int = 5,
     ):
+        """
+        Args:
+            input_dim (int): input dimension
+            k (int): number of kernels
+            n_blocks (int): number of blocks
+            d_block (int): dimension of blocks
+            dropout (float): dropout rate
+            arch_type (str): architecture type
+            lr (float): learning rate
+            weight_decay (float): weight decay
+            min_lr (float): minimum learning rate
+            scheduler_patience (int): patience for learning rate scheduler
+        """
         super().__init__(
             model=TabM.make(
                 n_num_features=input_dim,
@@ -35,6 +50,7 @@ class LitTabM(LitModel):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # TabM returns ensemble of predictions so we take mean
         return self.model(x).mean(dim=1)
 
     def training_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int):
@@ -43,11 +59,13 @@ class LitTabM(LitModel):
         predictions = self.model(x)
         targets = y.reshape(-1, 1, 1)
 
+        # As TabM returns ensemble of predictions we need to calculate loss for each prediction
         loss = self.criterion(
             predictions,
             targets.expand_as(predictions),
         )
 
+        # RMSE is calculated for mean prediction
         mean_prediction = predictions.mean(dim=1)
         self.train_rmse.update(mean_prediction.detach(), y.reshape(-1, 1))
 

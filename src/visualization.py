@@ -13,10 +13,25 @@ def plot_features_dual_axis(
     int_as_cat_unique_max: int | None = 20,
     cat_order: dict[str, list] | None = None,
 ):
+    """
+    Plot a dual axis graph of feature vs target
+
+    Args:
+        df (pd.DataFrame): dataframe
+        cols (list[str]): columns to plot
+        target_col (str): target column
+        n_bins (int): number of bins
+        n_wide (int): number of wide plots
+        figsize_per_plot (tuple[float, float]): figure size per plot
+        int_as_cat_unique_max (int | None): maximum number of unique values to treat as categorical
+        cat_order (dict[str, list] | None): order of categorical columns
+    """
+
     BAR_COLOR = "tab:blue"
     LINE_COLOR = "tab:orange"
 
     def is_categorical(s: pd.Series) -> bool:
+        """Check if series is categorical"""
         return (
             s.dtype == "object"
             or s.dtype == "category"
@@ -52,7 +67,7 @@ def plot_features_dual_axis(
         x = tmp[col]
         y = tmp[target_col]
 
-        # ---------- TRUE CATEGORICAL ----------
+        # Categorical feature
         if is_categorical(x):
             type_str = "categorical"
 
@@ -60,7 +75,7 @@ def plot_features_dual_axis(
             counts = x.value_counts()
             mean_y = tmp.groupby(col)[target_col].mean()
 
-            # ---- APPLY USER-DEFINED CATEGORY ORDER (if provided) ----
+            # Apply user-specified order
             if cat_order is not None and col in cat_order:
                 desired = list(cat_order[col])
 
@@ -96,7 +111,7 @@ def plot_features_dual_axis(
                 f"\n({type_str} with {n_unique} unique and {n_nan} nan)"
             )
 
-        # ---------- NUMERIC ----------
+        # Numeric feature
         else:
             type_str = "numeric"
 
@@ -117,7 +132,7 @@ def plot_features_dual_axis(
             unique_vals = np.sort(np.unique(xvals))
             n_unique_eff = len(unique_vals)
 
-            # --- Case 1: int-as-categorical ---
+            # Treat as categorical feature
             if (
                 int_as_cat_unique_max is not None
                 and n_unique_eff <= int_as_cat_unique_max
@@ -158,7 +173,7 @@ def plot_features_dual_axis(
                     f"\n({type_str} with {n_unique} unique and {n_nan} nan)"
                 )
 
-            # --- Case 2: low-cardinality numeric bins ---
+            # Low-cardinality numeric feature
             elif n_unique_eff < n_bins:
                 counts = np.array([(xvals == v).sum() for v in unique_vals])
                 mean_y = np.array([yvals[xvals == v].mean() for v in unique_vals])
@@ -182,7 +197,7 @@ def plot_features_dual_axis(
                     f"\n({type_str} with {n_unique} unique and {n_nan} nan)"
                 )
 
-            # --- Case 3: regular histogram ---
+            # Regular histogram
             else:
                 bins = np.linspace(xvals.min(), xvals.max(), n_bins + 1)
                 bin_centers = 0.5 * (bins[:-1] + bins[1:])

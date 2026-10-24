@@ -23,6 +23,12 @@ logging.getLogger("pytorch_lightning").setLevel(logging.ERROR)
 
 
 class LightningTabularRegressor(RegressorMixin, BaseEstimator):
+    """
+    Lightning based tabular regressor
+
+    Uses sklearn-like API to fit and predict
+    """
+
     def __init__(
         self,
         model: type[LitModel],
@@ -40,6 +46,23 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
         verbose=True,
         **kwargs,
     ):
+        """
+        Args:
+            model (type[LitModel]): model to train
+            lr (float): learning rate
+            weight_decay (float): weight decay
+            batch_size (int): batch size
+            max_epochs (int): maximum number of epochs
+            patience (int): patience for early stopping
+            scheduler_patience (int): patience for learning rate scheduler
+            min_lr (float): minimum learning rate
+            num_workers (int): number of workers
+            seed (int): random seed
+            device (str): device to train on
+            numeric_cols (list): list of numeric columns
+            verbose (bool): whether to print logs
+            **kwargs (dict): model arguments
+        """
         self.kwargs = kwargs
         self.model = model
         self.lr = lr
@@ -57,12 +80,19 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
 
     @staticmethod
     def _target_array(y):
+        """Convert target to numpy array"""
+
         if isinstance(y, (pd.Series, pd.DataFrame)):
             y = y.to_numpy()
 
         return np.asarray(y, dtype=np.float32).reshape(-1)
 
     def _prepare_fit(self, X: pd.DataFrame):
+        """
+        Prepare data for training
+
+        Convert to numpy array
+        """
         X = X.copy()
 
         self.feature_names_in_ = np.asarray(X.columns, dtype=object)
@@ -80,6 +110,7 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
         return X.astype(np.float32)
 
     def _prepare_predict(self, X: pd.DataFrame):
+        """Prepare data for prediction"""
         X = X.copy()
 
         if list(X.columns) != list(self.feature_names_in_):
@@ -94,6 +125,17 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
         X_valid: pd.DataFrame | None = None,
         y_valid: pd.DataFrame | None = None,
     ):
+        """
+        Train model
+
+        Args:
+            X (pd.DataFrame): training features
+            y (pd.DataFrame): training targets
+            X_valid (pd.DataFrame | None): validation features
+            y_valid (pd.DataFrame | None): validation targets
+        """
+
+        # Seed pytorch for reproducibility
         L.seed_everything(self.seed, workers=True, verbose=False)
 
         X = X.copy()
@@ -111,9 +153,11 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
         if len(X_valid) != len(y_valid):
             raise ValueError("X_valid and y_valid have different lengths.")
 
+        # Preprocess data
         X_train_processed = self._prepare_fit(X)
         X_valid_processed = self._prepare_predict(X_valid)
 
+        # Instantiate model using kwargs
         self.model_ = self.model(
             **self.kwargs,
             input_dim=X.shape[1],
@@ -123,6 +167,7 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
             scheduler_patience=self.scheduler_patience,
         )
 
+        # Create dataloaders
         train_ds = TensorDataset(
             torch.tensor(X_train_processed.to_numpy(), dtype=torch.float32),
             torch.tensor(y, dtype=torch.float32),
@@ -151,6 +196,8 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
 
         checkpoint_dir = tempfile.mkdtemp(prefix="lightning_best_")
 
+        # Save best model to temp checkpoint directory
+        # Best model is saved based on validation rmse
         checkpoint = ModelCheckpoint(
             dirpath=checkpoint_dir,
             filename="best",
@@ -160,6 +207,7 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
             save_weights_only=True,
         )
 
+        # Early stopping on validation rmse
         early_stopping = EarlyStopping(
             monitor="val_rmse",
             mode="min",
@@ -168,6 +216,8 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
             verbose=False,
         )
 
+        # Train model with early stopping and checkpoint
+        # Use deterministic mode for reproducibility
         trainer = L.Trainer(
             max_epochs=self.max_epochs,
             accelerator="auto",
@@ -189,6 +239,7 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
 
         best_path = checkpoint.best_model_path
 
+        # Restore best model
         if best_path:
             best_state = torch.load(
                 best_path,
@@ -205,9 +256,19 @@ class LightningTabularRegressor(RegressorMixin, BaseEstimator):
         return self
 
     def predict(self, X: pd.DataFrame):
+        """
+        Make predictions
+
+        Args:
+            X (pd.DataFrame): features
+
+        Returns:
+            numpy.ndarray
+        """
         X = pd.DataFrame(X).copy()
         X_processed = self._prepare_predict(X)
 
+        # Create dataloader
         dataset = TensorDataset(
             torch.tensor(X_processed.to_numpy(), dtype=torch.float32)
         )

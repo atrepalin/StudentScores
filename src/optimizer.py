@@ -6,7 +6,6 @@ import optuna
 import pandas as pd
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import BaseCrossValidator, cross_val_score
-from sklearn.utils import _safe_indexing
 
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 
@@ -19,6 +18,21 @@ def optimize_model(
     cv: BaseCrossValidator,
     n_trials=50,
 ):
+    """
+    Optimize sklearn model hyperparameters using optuna
+
+    Args:
+        model_class: sklearn model class
+        param_space (Callable): hyperparameter space factory
+        X (pd.DataFrame): input features
+        y (pd.DataFrame): target
+        cv (BaseCrossValidator): cross validation strategy
+        n_trials (int): number of trials
+
+    Returns:
+        optuna study
+    """
+
     def objective(trial: optuna.Trial):
         params = param_space(trial)
 
@@ -33,12 +47,14 @@ def optimize_model(
             n_jobs=-1,
         )
 
+        # Force garbage collection to avoid memory leaks
         gc.collect()
 
         trial.set_user_attr("scores", scores.tolist())
 
         return np.mean(scores)
 
+    # Use sampler for reproducibility
     sampler = optuna.samplers.TPESampler(seed=42)
     study = optuna.create_study(direction="minimize", sampler=sampler)
     study.optimize(
@@ -56,37 +72,50 @@ def optimize_model_manual(
     X: pd.DataFrame,
     y: pd.DataFrame,
     cv: BaseCrossValidator,
-    fit: Callable,
-    predict: Callable,
+    fit_fn: Callable,
+    predict_fn: Callable,
     n_trials=50,
 ):
+    """
+    Optimize any model hyperparameters using optuna
+    Uses manual fit and predict functions
+
+    Args:
+        model_class: sklearn model class
+        param_space (Callable): hyperparameter space factory
+        X (pd.DataFrame): input features
+        y (pd.DataFrame): target
+        cv (BaseCrossValidator): cross validation strategy
+        fit_fn (Callable): fit function
+        predict_fn (Callable): predict function
+        n_trials (int): number of trials
+
+    Returns:
+        optuna study
+    """
+
     def objective(trial: optuna.Trial):
         params = param_space(trial)
         scores = []
 
+        # Manually split data using cross validation strategy
         for fold_idx, (train_idx, valid_idx) in enumerate(cv.split(X, y)):
-            X_train = _safe_indexing(X, train_idx)
-            y_train = _safe_indexing(y, train_idx)
-
-            X_valid = _safe_indexing(X, valid_idx)
-            y_valid = _safe_indexing(y, valid_idx)
-
             model = model_class(**params)
 
-            fitted_model = fit(
+            fitted_model = fit_fn(
                 model,
-                X_train,
-                y_train,
-                X_valid,
-                y_valid,
+                X.iloc[train_idx],
+                y.iloc[train_idx],
+                X.iloc[valid_idx],
+                y.iloc[valid_idx],
             )
 
             if fitted_model is not None:
                 model = fitted_model
 
-            predictions = predict(model, X_valid)
+            predictions = predict_fn(model, X.iloc[valid_idx])
 
-            rmse = np.sqrt(mean_squared_error(y_valid, predictions))
+            rmse = np.sqrt(mean_squared_error(y.iloc[valid_idx], predictions))
 
             scores.append(float(rmse))
 
@@ -95,7 +124,8 @@ def optimize_model_manual(
             if trial.should_prune():
                 raise optuna.TrialPruned()
 
-            del model, X_train, y_train, X_valid, y_valid
+            # Force garbage collection to avoid memory leaks
+            del model
             gc.collect()
 
         trial.set_user_attr("scores", scores)

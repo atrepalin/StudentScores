@@ -3,6 +3,12 @@ from torch import nn
 
 
 class Squeeze(nn.Module):
+    """
+    Squeeze dimension Module
+
+    Used only for easier sequential model definition
+    """
+
     def __init__(self, dim=None):
         super().__init__()
         self.dim = dim
@@ -21,6 +27,13 @@ class MLP(nn.Module):
         dropout: float = 0.1,
         output_dim: int = 1,
     ):
+        """
+        Args:
+            input_dim (int): input dimension
+            hidden_dims (tuple): hidden dimensions
+            dropout (float): dropout rate
+            output_dim (int): output dimension
+        """
         super().__init__()
 
         layers: list[nn.Module] = []
@@ -30,6 +43,7 @@ class MLP(nn.Module):
             layers.extend(
                 [
                     nn.Linear(in_features, hidden_dim),
+                    # Use LayerNorm instead of BatchNorm for tabular data
                     nn.LayerNorm(hidden_dim),
                     nn.ReLU(),
                     nn.Dropout(dropout),

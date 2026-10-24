@@ -14,6 +14,15 @@ class TabularResNet(nn.Module):
         head_dims: tuple = (64, 16),
         output_dim: int = 1,
     ):
+        """
+        Args:
+            input_dim (int): input dimension
+            hidden_dim (int): hidden dimension
+            n_blocks (int): number of blocks
+            dropout (float): dropout rate
+            head_dims (tuple): head dimensions
+            output_dim (int): output dimension
+        """
         super().__init__()
 
         self.proj = nn.Linear(input_dim, hidden_dim)

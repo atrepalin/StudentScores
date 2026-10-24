@@ -7,6 +7,8 @@ from torchmetrics.regression import MeanSquaredError
 
 
 class LitModel(L.LightningModule):
+    """Lightning module for regression"""
+
     def __init__(
         self,
         model: nn.Module,
@@ -15,19 +17,40 @@ class LitModel(L.LightningModule):
         min_lr: float = 1e-6,
         scheduler_patience: int = 5,
     ):
+        """
+        Args:
+            model (nn.Module): model to train
+            lr (float): learning rate
+            weight_decay (float): weight decay
+            min_lr (float): minimum learning rate
+            scheduler_patience (int): patience for learning rate scheduler
+        """
         super().__init__()
+
+        # Store kwargs
         self.save_hyperparameters(ignore="model")
 
         self.model = model
+
+        # Use MSE as loss
         self.criterion = nn.MSELoss()
 
+        # Use RMSE as metric
         self.train_rmse = MeanSquaredError(squared=False)
         self.val_rmse = MeanSquaredError(squared=False)
 
     def forward(self, x: torch.Tensor):
+        """Model forward pass"""
         return self.model(x)
 
     def training_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int):
+        """
+        Training step
+
+        Args:
+            batch (tuple[torch.Tensor, torch.Tensor]): batch
+            batch_idx (int): batch index
+        """
         x, y = batch
 
         pred = self(x)
@@ -47,10 +70,18 @@ class LitModel(L.LightningModule):
         return loss
 
     def on_train_epoch_end(self):
+        """Log train RMSE at the end of each epoch"""
         self.log("train_rmse", self.train_rmse.compute(), prog_bar=True)
         self.train_rmse.reset()
 
     def validation_step(self, batch: tuple[torch.Tensor, torch.Tensor], batch_idx: int):
+        """
+        Validation step
+
+        Args:
+            batch (tuple[torch.Tensor, torch.Tensor]): batch
+            batch_idx (int): batch index
+        """
         x, y = batch
 
         pred = self(x)
@@ -68,23 +99,21 @@ class LitModel(L.LightningModule):
         )
 
     def on_validation_epoch_end(self):
-        rmse = self.val_rmse.compute()
-
-        self.log(
-            "val_rmse",
-            rmse,
-            prog_bar=True,
-        )
-
+        """Log val RMSE at the end of each epoch"""
+        self.log("val_rmse", self.val_rmse.compute(), prog_bar=True)
         self.val_rmse.reset()
 
     def configure_optimizers(self):
+        """Configure optimizers and schedulers"""
+
+        # Use AdamW with weight decay
         optimizer = AdamW(
             self.parameters(),
             lr=self.hparams.lr,
             weight_decay=self.hparams.weight_decay,
         )
 
+        # Use ReduceLROnPlateau scheduler
         scheduler = ReduceLROnPlateau(
             optimizer,
             mode="min",

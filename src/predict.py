@@ -15,12 +15,32 @@ def ensemble_predict(
     X_train: pd.DataFrame,
     y_train: pd.DataFrame,
     X_test: pd.DataFrame,
-    kf: BaseCrossValidator,
+    cv: BaseCrossValidator,
     numerical_features: list = [],
     checkpoint_dir: str | Path | None = None,
     recompute: bool | str | Iterable[str] = False,
     ignore: str | Iterable[str] = [],
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Train and predict a set of models and ensemble their OOF and test predictions
+
+    Used for hillclimbing
+
+    Args:
+        model_specs (dict[model_name: (model, fit_fn, predict_fn, scale, should_clone)]): model specs
+        X_train (pd.DataFrame): training features
+        y_train (pd.DataFrame): training targets
+        X_test (pd.DataFrame): test features
+        cv (BaseCrossValidator): cross validation strategy
+        numerical_features (list): list of numerical features for scaling
+        checkpoint_dir (str | Path | None): directory to store checkpoints
+        recompute (bool | str | Iterable[str]): models to recompute
+        ignore (str | Iterable[str]): models to ignore
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: train, oof predictions, test predictions
+    """
+
     train_size = len(X_train)
     test_size = len(X_test)
 
@@ -45,6 +65,7 @@ def ensemble_predict(
     test_preds = []
 
     def checkpoint_paths(model_name: str):
+        """Get checkpoint paths for a model name"""
         safe_name = quote(str(model_name), safe="")
 
         return (
@@ -68,6 +89,7 @@ def ensemble_predict(
                 oof_pred = pd.read_parquet(oof_path)
                 test_pred = pd.read_parquet(test_path)
 
+                # Check if checkpoint is compatible
                 if (
                     len(oof_pred) == train_size
                     and len(test_pred) == test_size
@@ -93,10 +115,12 @@ def ensemble_predict(
         if scale:
             scaler: StandardScaler = StandardScaler().set_output(transform="pandas")
 
+            # Fit scaler on train numerical features
             X_train_processed[numerical_features] = scaler.fit_transform(
                 X_train[numerical_features]
             )
 
+            # Apply scaler to test numerical features
             X_test_processed[numerical_features] = scaler.transform(
                 X_test[numerical_features]
             )
@@ -109,13 +133,14 @@ def ensemble_predict(
         fold_test_predictions = []
 
         for fit_idx, valid_idx in tqdm(
-            kf.split(X_train),
+            cv.split(X_train),
             desc=model_name,
             leave=False,
-            total=kf.n_splits,
+            total=cv.n_splits,
         ):
             fold_model = clone(model) if should_clone else model
 
+            # Fit model on fold
             fitted_model = fit_fn(
                 fold_model,
                 X_train_processed.iloc[fit_idx],
@@ -124,11 +149,13 @@ def ensemble_predict(
                 y_train.iloc[valid_idx],
             )
 
+            # Predict on fold
             validation_predictions = predict_fn(
                 fitted_model,
                 X_train_processed.iloc[valid_idx],
             )
 
+            # Store oof predictions
             oof_pred.loc[valid_idx, model_name] = np.asarray(
                 validation_predictions
             ).reshape(-1)
@@ -140,6 +167,7 @@ def ensemble_predict(
 
             fold_test_predictions.append(np.asarray(test_predictions).reshape(-1))
 
+        # Compute test predictions using oof predictions
         test_pred = pd.DataFrame(
             {
                 model_name: np.mean(
@@ -151,6 +179,7 @@ def ensemble_predict(
 
         oof_pred = oof_pred.astype(float)
 
+        # Save checkpoint
         if checkpoint_dir is not None:
             oof_pred.to_parquet(oof_path, index=False)
             test_pred.to_parquet(test_path, index=False)

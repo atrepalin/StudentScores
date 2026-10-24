@@ -3,6 +3,8 @@ from src.nn.resnet import TabularResNet
 
 
 class LitTabResNet(LitModel):
+    """ResNet model for regression"""
+
     def __init__(
         self,
         input_dim: int,
@@ -15,6 +17,18 @@ class LitTabResNet(LitModel):
         min_lr: float = 1e-6,
         scheduler_patience: int = 5,
     ):
+        """
+        Args:
+            input_dim (int): input dimension
+            hidden_dim (int): hidden dimension
+            n_blocks (int): number of blocks
+            dropout (float): dropout rate
+            head_dims (tuple): head dimensions
+            lr (float): learning rate
+            weight_decay (float): weight decay
+            min_lr (float): minimum learning rate
+            scheduler_patience (int): patience for learning rate scheduler
+        """
         super().__init__(
             model=TabularResNet(
                 input_dim=input_dim,

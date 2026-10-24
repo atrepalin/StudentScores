@@ -8,8 +8,20 @@ def test_models(
     model_specs: dict[str, tuple[object, pd.DataFrame, pd.DataFrame]],
     y_train: pd.DataFrame,
     y_test: pd.DataFrame,
-    kf: BaseCrossValidator,
+    cv: BaseCrossValidator,
 ):
+    """
+    Test sklearn model predictions
+
+    Args:
+        model_specs (dict[str, tuple[object, pd.DataFrame, pd.DataFrame]]): model specs
+        y_train (pd.DataFrame): training targets
+        y_test (pd.DataFrame): test targets
+        cv (BaseCrossValidator): cross validation strategy
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: test predictions, test errors, test results
+    """
     test_predictions = pd.DataFrame(index=y_test.index)
     test_predictions["y_true"] = y_test
     error_rows = []
@@ -18,7 +30,7 @@ def test_models(
     for model_name, (model, X_fit, X_holdout) in model_specs.items():
         fold_test_predictions = []
 
-        for fold, (fit_idx, _) in enumerate(kf.split(X_fit), start=1):
+        for fold, (fit_idx, _) in enumerate(cv.split(X_fit), start=1):
             fold_model = clone(model)
             fold_model.fit(X_fit.iloc[fit_idx], y_train.iloc[fit_idx])
             fold_test_predictions.append(fold_model.predict(X_holdout))
@@ -26,6 +38,7 @@ def test_models(
         test_pred = np.mean(np.vstack(fold_test_predictions), axis=0)
         test_predictions[model_name] = test_pred
 
+        # Calculate MAE and RMSE
         residual = y_test.to_numpy() - test_pred
         abs_error = np.abs(residual)
         test_rows.append(
@@ -58,9 +71,23 @@ def test_models_manual(
     model_specs: dict,
     y_train: pd.DataFrame,
     y_test: pd.DataFrame,
-    kf: BaseCrossValidator,
+    cv: BaseCrossValidator,
     should_clone: bool = True,
 ):
+    """
+    Test any model predictions
+    Uses manual fit and predict functions
+
+    Args:
+        model_specs (dict[model_name: (model, X_fit, X_holdout, fit_fn, predict_fn)]): model specs
+        y_train (pd.DataFrame): training targets
+        y_test (pd.DataFrame): test targets
+        cv (BaseCrossValidator): cross validation strategy
+        should_clone (bool): whether to clone models
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: test predictions, test errors, test results
+    """
     test_predictions = pd.DataFrame(index=y_test.index)
     test_predictions["y_true"] = y_test.squeeze()
 
@@ -72,7 +99,7 @@ def test_models_manual(
 
         fold_test_predictions = []
 
-        for fold, (fit_idx, _) in enumerate(kf.split(X_fit), start=1):
+        for fold, (fit_idx, _) in enumerate(cv.split(X_fit), start=1):
             fold_model = clone(model) if should_clone else model
 
             X_fold = X_fit.iloc[fit_idx]

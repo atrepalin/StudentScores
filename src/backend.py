@@ -1,7 +1,15 @@
+from typing import Literal
+
 import pynvml
 
 
 def is_cuda_available():
+    """
+    Check if CUDA is available
+
+    Returns:
+        bool
+    """
     try:
         pynvml.nvmlInit()
         device_count = pynvml.nvmlDeviceGetCount()
@@ -16,7 +24,16 @@ def is_cuda_available():
         return False
 
 
-def core_factory(device: str):
+def core_factory(device: Literal["cuda", "cpu"]):
+    """
+    Create core based on device type and cuml availability
+
+    Args:
+        device (Literal["cuda", "cpu"]): "cuda" or "cpu"
+
+    Returns:
+        core: sklearn or cuml
+    """
     try:
         if device == "cuda":
             import cuml as core

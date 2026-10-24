@@ -2,6 +2,8 @@ from dataclasses import dataclass, fields
 
 
 class Dictable:
+    """A dataclass that can be converted to a dictionary"""
+
     def keys(self):
         return [f.name for f in fields(self)]
 

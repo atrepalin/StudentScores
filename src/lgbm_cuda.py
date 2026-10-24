@@ -7,6 +7,15 @@ import numpy as np
 
 @lru_cache
 def get_lgbm_device(device: Literal["cuda", "cpu"]):
+    """
+    Check if LightGBM is compiled with CUDA support
+
+    Args:
+        device (Literal["cuda", "cpu"]): "cuda" or "cpu"
+
+    Returns:
+        Literal["cuda", "cpu"]: supported device
+    """
     if device == "cuda":
         try:
             data = np.random.rand(50, 2)

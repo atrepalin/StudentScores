@@ -7,6 +7,17 @@ T = TypeVar("T")
 
 
 def _parse_value(value: str, annotation: Any) -> Any:
+    """
+    Parse a value based on its type annotation
+
+    Args:
+        value (str): value to parse
+        annotation (Any): type annotation of the value
+
+    Returns:
+        Any: parsed value
+    """
+
     origin = get_origin(annotation)
     args = get_args(annotation)
 
@@ -43,6 +54,17 @@ def _parse_value(value: str, annotation: Any) -> Any:
 
 
 def parse_dataclass(section: Mapping[str, str], cls: type[T]) -> T:
+    """
+    Parse a dataclass from a config section
+
+    Args:
+        section (Mapping[str, str]): config section to parse
+        cls (type[T]): dataclass to parse
+
+    Returns:
+        T: parsed dataclass
+    """
+
     if not is_dataclass(cls):
         raise TypeError(f"{cls.__name__} must be a dataclass")
 
@@ -73,6 +95,8 @@ def parse_dataclass(section: Mapping[str, str], cls: type[T]) -> T:
 
 
 class ModelConfig:
+    """A config file parser for dataclasses"""
+
     def __init__(
         self,
         path: str | Path,

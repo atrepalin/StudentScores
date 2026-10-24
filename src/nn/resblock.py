@@ -5,14 +5,23 @@ from src.nn.seblock import SEBlock
 
 
 class ResBlock(nn.Module):
+    """Residual block with SEBlock"""
+
     def __init__(
         self,
         dim: int,
         dropout: float = 0.1,
         reduction: int = 4,
     ):
+        """
+        Args:
+            dim (int): input dimension
+            dropout (float): dropout rate
+            reduction (int): reduction factor
+        """
         super().__init__()
 
+        # Use LayerNorm instead of BatchNorm for tabular data
         self.norm1 = nn.LayerNorm(dim)
         self.linear1 = nn.Linear(dim, dim)
 

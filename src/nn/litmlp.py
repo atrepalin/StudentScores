@@ -3,6 +3,8 @@ from src.nn.mlp import MLP
 
 
 class LitMLP(LitModel):
+    """MLP model for regression."""
+
     def __init__(
         self,
         input_dim: int,
@@ -13,6 +15,16 @@ class LitMLP(LitModel):
         min_lr: float = 1e-6,
         scheduler_patience: int = 5,
     ):
+        """
+        Args:
+            input_dim (int): input dimension
+            hidden_dims (tuple): hidden dimensions
+            dropout (float): dropout rate
+            lr (float): learning rate
+            weight_decay (float): weight decay
+            min_lr (float): minimum learning rate
+            scheduler_patience (int): patience for learning rate scheduler
+        """
         super().__init__(
             model=MLP(
                 input_dim=input_dim,
