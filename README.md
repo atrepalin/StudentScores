@@ -154,20 +154,9 @@ The feature engineering experiments investigated whether simple domain-inspired 
 
 Two derived features were introduced:
 
-$$
-\text{study\\_efficiency}
-=
-\text{study\\_hours}
-\cdot
-\frac{\text{class\\_attendance}}{100}
-$$
+$$\text{study\\_efficiency} = \text{study\\_hours} \cdot \frac{\text{class\\_attendance}}{100}$$
 
-$$
-\text{sleep\\_study\\_ratio}
-=
-\frac{\text{sleep\\_hours}}
-{\text{study\\_hours} + 10^{-6}}
-$$
+$$\text{sleep\\_study\\_ratio} = \frac{\text{sleep\\_hours}}{\text{study\\_hours} + 10^{-6}}$$
 
 The small constant in the denominator prevents division by zero.
 
